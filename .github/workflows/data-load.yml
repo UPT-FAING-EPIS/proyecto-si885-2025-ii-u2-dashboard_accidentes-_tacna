@@ -41,9 +41,9 @@ jobs:
 
       - name: Verify database connectivity
         run: |
-          export PATH="$PATH:/opt/mssql-tools/bin"
-          echo "Testing connection to SQL Server..."
-          sqlcmd -S ${{ secrets.SQL_SERVER }} -U ${{ secrets.SQL_USER }} -P ${{ secrets.SQL_PASS }} -d incidentestacna -Q "SELECT GETDATE() as current_time, @@VERSION as version;"
+            export PATH="$PATH:/opt/mssql-tools/bin"
+            echo "Testing connection to SQL Server..."
+            sqlcmd -S "${{ secrets.SQL_SERVER }}" -U "${{ secrets.SQL_USER }}" -P "${{ secrets.SQL_PASS }}" -d incidentestacna -Q "SELECT GETDATE() AS current_time, @@VERSION AS version;"
 
       - name: Create database structure
         run: |
