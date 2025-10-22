@@ -1,0 +1,58 @@
+{
+  "radio_uno": {
+    "nombre": "Radio Uno Tacna",
+    "tipo": "radio",
+    "region": "Tacna",
+    "url_principal": "https://radiouno.pe/",
+    "secciones": {
+      "policial": "https://radiouno.pe/noticias/category/policiales/",
+      "locales": "https://radiouno.pe/noticias/category/locales/",
+    }
+  },
+"rpp": {
+    "nombre": "RPP Noticias",
+    "tipo": "digital",
+    "region": "Tacna",
+    "url_principal": "https://rpp.pe/",
+    "secciones": {
+      "tacna": "https://rpp.pe/noticias/tacna"
+    }
+  },
+
+  "la_republica": {
+    "nombre": "La República",
+    "tipo": "digital",
+    "region": "Tacna",
+    "url_principal": "https://larepublica.pe/",
+    "secciones": {
+      "tacna": "https://larepublica.pe/buscar?buscar=tacna",
+      "policiales": "https://larepublica.pe/policiales"
+    }
+  },
+
+  "radio_uno_telegram": {
+    "nombre": "Radio Uno Telegram",
+    "tipo": "telegram",
+    "region": "Tacna",
+    "url_principal": "https://t.me/gruporadiouno",
+    "secciones": {}
+  }
+
+    "diario_correo": {
+    "nombre": "Diario Correo - Tacna",
+    "tipo": "digital",
+    "region": "Tacna",
+    "url_principal": "https://diariocorreo.pe/",
+    "secciones": {
+      "regional": "https://diariocorreo.pe/edicion/tacna/"
+    }
+  },
+  "america_tv": {
+  "nombre": "América TV Noticias",
+  "tipo": "digital",
+  "region": "Tacna",
+  "url_principal": "https://www.americatv.com.pe/",
+  "secciones": {
+    "tacna": "https://www.americatv.com.pe/noticias/tag/tacna"
+  }
+}

@@ -1,23 +1,102 @@
 {
-  "radio_uno": {
-    "nombre": "Radio Uno Tacna",
-    "tipo": "radio",
-    "region": "Tacna",
-    "url_principal": "https://radiouno.pe/",
-    "secciones": {
-      "policial": "https://radiouno.pe/noticias/policiales/",
-      "actualidad": "https://radiouno.pe/noticias/actualidad/",
-      "regional": "https://radiouno.pe/noticias/region/"
+  "fuentes": {
+    "rpp": {
+      "nombre": "RPP Noticias",
+      "tipo": "digital",
+      "region": "Tacna",
+      "url_principal": "https://rpp.pe/",
+      "activo": true,
+      "secciones": {
+        "tacna": "https://rpp.pe/noticias/tacna"
+      }
+    },
+    "la_republica": {
+      "nombre": "La República",
+      "tipo": "digital",
+      "region": "Tacna", 
+      "url_principal": "https://larepublica.pe/",
+      "activo": true,
+      "secciones": {
+        "tacna": "https://larepublica.pe/buscar?buscar=tacna",
+        "policiales": "https://larepublica.pe/policiales"
+      }
+    },
+    "diario_correo": {
+      "nombre": "Diario Correo - Tacna",
+      "tipo": "digital",
+      "region": "Tacna",
+      "url_principal": "https://diariocorreo.pe/",
+      "activo": true,
+      "secciones": {
+        "regional": "https://diariocorreo.pe/edicion/tacna/"
+      }
+    },
+    "america_tv": {
+      "nombre": "América TV Noticias",
+      "tipo": "digital",
+      "region": "Tacna",
+      "url_principal": "https://www.americatv.com.pe/",
+      "activo": true,
+      "secciones": {
+        "tacna": "https://www.americatv.com.pe/noticias/tag/tacna"
+      }
+    },
+    "radio_uno": {
+      "nombre": "Radio Uno Tacna",
+      "tipo": "radio",
+      "region": "Tacna",
+      "url_principal": "https://radiouno.pe/",
+      "activo": true,
+      "secciones": {
+        "policial": "https://radiouno.pe/noticias/category/policiales/",
+        "locales": "https://radiouno.pe/noticias/category/locales/"
+      }
+    },
+    "radio_uno_telegram": {
+      "nombre": "Radio Uno Telegram",
+      "tipo": "telegram", 
+      "region": "Tacna",
+      "url_principal": "https://t.me/gruporadiouno",
+      "activo": false,
+      "secciones": {}
     }
   },
-  "tacna_noticias": {
-    "nombre": "Tacna Noticias",
-    "tipo": "digital",
-    "region": "Tacna",
-    "url_principal": "https://tacnanoticias.pe/",
-    "secciones": {
-      "policial": "https://tacnanoticias.pe/policiales/",
-      "local": "https://tacnanoticias.pe/locales/"
-    }
+  "configuracion": {
+    "timeout_segundos": 30,
+    "reintentos_maximos": 3,
+    "delay_entre_requests": 2,
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+  },
+  "palabras_clave": {
+    "accidentes": [
+      "accidente",
+      "colisión", 
+      "choque",
+      "atropello",
+      "volcadura",
+      "despiste",
+      "siniestro vial"
+    ],
+    "delitos": [
+      "robo",
+      "asalto",
+      "hurto", 
+      "homicidio",
+      "asesinato",
+      "violencia",
+      "agresión"
+    ],
+    "ubicaciones": [
+      "Tacna",
+      "Alto de la Alianza",
+      "Ciudad Nueva",
+      "Pocollay",
+      "Sama",
+      "Inclán",
+      "Palca", 
+      "Candarave",
+      "Jorge Basadre",
+      "Tarata"
+    ]
   }
 }
