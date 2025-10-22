@@ -2,7 +2,7 @@ name: ETL Noticias Tacna
 
 on:
   schedule:
-    - cron: "*/5 * * * *"  # cada 5 minutos
+    - cron: "0 * * * *"  # cada hora (minuto 0 de cada hora)
   workflow_dispatch:
 
 jobs:
@@ -23,10 +23,20 @@ jobs:
 
       - name: Instalar SQL Server ODBC Driver
         run: |
+          # Instalar dependencias necesarias
+          sudo apt-get update
+          sudo apt-get install -y unixodbc-dev unixodbc
+          
+          # Agregar repositorio de Microsoft
           curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
           curl https://packages.microsoft.com/config/ubuntu/22.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list
           sudo apt-get update
+          
+          # Instalar driver ODBC para SQL Server
           sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18
+          
+          # Verificar instalación
+          odbcinst -q -d
 
       - name: Ejecutar scraper
         run: python etl/scraper.py
