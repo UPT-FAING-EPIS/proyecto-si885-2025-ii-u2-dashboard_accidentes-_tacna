@@ -20,6 +20,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
+      - name: Debug - Check Azure CLI
+        run: |
+          az version
+          echo "Attempting login with username authentication..."
+      
       - name: login azure
         run: | 
           az login -u ${{ secrets.AZURE_USERNAME }} -p ${{ secrets.AZURE_PASSWORD }}
