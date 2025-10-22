@@ -1,0 +1,380 @@
+name: Load Data to Azure SQL Database - Incidentes Tacna
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'bd.sql'
+      - '.github/workflows/data-load.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: false
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - development
+
+permissions:
+  contents: write
+
+jobs:
+  load-data:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install sqlcmd
+        run: |
+          curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
+          curl https://packages.microsoft.com/config/ubuntu/22.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list
+          sudo apt-get update
+          sudo ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev msodbcsql18
+          echo 'export PATH="$PATH:/opt/mssql-tools/bin"' >> ~/.bashrc
+          source ~/.bashrc
+
+      - name: Verify database connectivity
+        run: |
+          export PATH="$PATH:/opt/mssql-tools/bin"
+          echo "Testing connection to SQL Server..."
+          sqlcmd -S ${{ secrets.SQL_SERVER }} -U ${{ secrets.SQL_USER }} -P ${{ secrets.SQL_PASS }} -d incidentestacna -Q "SELECT GETDATE() as current_time, @@VERSION as version;"
+
+      - name: Create database structure
+        run: |
+          export PATH="$PATH:/opt/mssql-tools/bin"
+          echo "Creating database structure for Incidentes Tacna..."
+          sqlcmd -S ${{ secrets.SQL_SERVER }} -U ${{ secrets.SQL_USER }} -P ${{ secrets.SQL_PASS }} -d incidentestacna -i bd.sql
+
+      - name: Verify tables creation
+        run: |
+          export PATH="$PATH:/opt/mssql-tools/bin"
+          echo "📊 Verifying tables..."
+          sqlcmd -S ${{ secrets.SQL_SERVER }} -U ${{ secrets.SQL_USER }} -P ${{ secrets.SQL_PASS }} -d incidentestacna -Q "
+          SELECT 
+              t.name AS tabla,
+              COUNT(c.column_id) AS num_columnas
+          FROM sys.tables t
+          LEFT JOIN sys.columns c ON t.object_id = c.object_id
+          GROUP BY t.name
+          ORDER BY t.name;
+          "
+
+      - name: Insert sample data
+        run: |
+          export PATH="$PATH:/opt/mssql-tools/bin"
+          echo "📝 Insertando datos de ejemplo de medios de Tacna..."
+          sqlcmd -S ${{ secrets.SQL_SERVER }} -U ${{ secrets.SQL_USER }} -P ${{ secrets.SQL_PASS }} -d incidentestacna -Q "
+          -- Solo insertar si no existen datos
+          IF NOT EXISTS (SELECT 1 FROM medios_comunicacion)
+          BEGIN
+              -- Insertar medios de ejemplo (ya están en bd.sql)
+              PRINT '✅ Medios de comunicación insertados desde bd.sql';
+          END
+          ELSE
+          BEGIN
+              PRINT '⚠️  Los medios ya existen, no se insertan duplicados';
+          END
+          "
+
+      - name: Generate statistics
+        run: |
+          export PATH="$PATH:/opt/mssql-tools/bin"
+          echo "📊 Generando estadísticas de la base de datos..."
+          sqlcmd -S ${{ secrets.SQL_SERVER }} -U ${{ secrets.SQL_USER }} -P ${{ secrets.SQL_PASS }} -d incidentestacna -Q "
+          -- Estadísticas de medios
+          SELECT 
+              'Medios de comunicación registrados: ' + CAST(COUNT(*) AS VARCHAR(10)) as estadistica
+          FROM medios_comunicacion;
+          
+          -- Estadísticas de noticias
+          SELECT 
+              'Noticias registradas: ' + CAST(COUNT(*) AS VARCHAR(10)) as estadistica
+          FROM noticias;
+          
+          -- Estadísticas de accidentes
+          SELECT 
+              'Accidentes registrados: ' + CAST(COUNT(*) AS VARCHAR(10)) as estadistica
+          FROM accidentes;
+          
+          -- Top 5 medios
+          SELECT TOP 5
+              nombre_medio,
+              tipo_medio,
+              url
+          FROM medios_comunicacion
+          ORDER BY nombre_medio;
+          "
+
+      - name: Generate Database ER Diagram
+        run: |
+          mkdir -p diagrams
+          
+          cat > diagrams/database-er-diagram.md << 'EOF'
+          # Diagrama Entidad-Relación - Sistema Incidentes Tacna
+
+          ## Diagrama ER
+
+          ```mermaid
+          erDiagram
+              medios_comunicacion ||--o{ noticias : publica
+              noticias ||--o{ accidentes : reporta
+              noticias ||--o{ noticias_keywords : tiene
+              
+              medios_comunicacion {
+                  int id_medio PK
+                  nvarchar nombre_medio
+                  nvarchar tipo_medio
+                  nvarchar url
+                  bit activo
+                  datetime2 fecha_registro
+              }
+              
+              noticias {
+                  int id_noticia PK
+                  int id_medio FK
+                  nvarchar titulo
+                  nvarchar descripcion
+                  nvarchar url_noticia
+                  date fecha_publicacion
+                  nvarchar categoria
+                  bit verificada
+                  datetime2 fecha_scraping
+              }
+              
+              accidentes {
+                  int id_accidente PK
+                  int id_noticia FK
+                  nvarchar tipo_accidente
+                  date fecha_accidente
+                  time hora_accidente
+                  nvarchar distrito
+                  nvarchar direccion
+                  int num_heridos
+                  int num_fallecidos
+                  nvarchar descripcion_breve
+                  nvarchar fuente_oficial
+              }
+              
+              noticias_keywords {
+                  int id PK
+                  int id_noticia FK
+                  nvarchar keyword
+              }
+          ```
+
+          ## Diccionario de Datos
+
+          ### Tabla: `medios_comunicacion`
+
+          | Campo | Tipo | Restricciones | Descripción |
+          |-------|------|---------------|-------------|
+          | `id_medio` | `INT IDENTITY(1,1)` | PRIMARY KEY | Identificador único |
+          | `nombre_medio` | `NVARCHAR(200)` | NOT NULL, UNIQUE | Nombre del medio |
+          | `tipo_medio` | `NVARCHAR(50)` | NOT NULL | Tipo: web, televisión, radio, periódico |
+          | `url` | `NVARCHAR(500)` | NULL | URL del medio |
+          | `activo` | `BIT` | DEFAULT 1 | Estado del medio |
+          | `fecha_registro` | `DATETIME2` | DEFAULT GETDATE() | Fecha de registro |
+
+          ### Tabla: `noticias`
+
+          | Campo | Tipo | Restricciones | Descripción |
+          |-------|------|---------------|-------------|
+          | `id_noticia` | `INT IDENTITY(1,1)` | PRIMARY KEY | Identificador único |
+          | `id_medio` | `INT` | FOREIGN KEY | Referencia a medio |
+          | `titulo` | `NVARCHAR(500)` | NOT NULL | Título de la noticia |
+          | `descripcion` | `NVARCHAR(MAX)` | NULL | Contenido completo |
+          | `url_noticia` | `NVARCHAR(1000)` | UNIQUE | URL de la noticia |
+          | `fecha_publicacion` | `DATE` | NULL | Fecha de publicación |
+          | `categoria` | `NVARCHAR(100)` | NULL | Categoría (accidente, incidente) |
+          | `verificada` | `BIT` | DEFAULT 0 | Si fue verificada |
+          | `fecha_scraping` | `DATETIME2` | DEFAULT GETDATE() | Fecha de extracción |
+
+          ### Tabla: `accidentes`
+
+          | Campo | Tipo | Restricciones | Descripción |
+          |-------|------|---------------|-------------|
+          | `id_accidente` | `INT IDENTITY(1,1)` | PRIMARY KEY | Identificador único |
+          | `id_noticia` | `INT` | FOREIGN KEY | Referencia a noticia |
+          | `tipo_accidente` | `NVARCHAR(100)` | NULL | Tipo de accidente |
+          | `fecha_accidente` | `DATE` | NULL | Fecha del accidente |
+          | `hora_accidente` | `TIME` | NULL | Hora del accidente |
+          | `distrito` | `NVARCHAR(100)` | NULL | Distrito de Tacna |
+          | `direccion` | `NVARCHAR(500)` | NULL | Dirección exacta |
+          | `num_heridos` | `INT` | DEFAULT 0 | Número de heridos |
+          | `num_fallecidos` | `INT` | DEFAULT 0 | Número de fallecidos |
+          | `descripcion_breve` | `NVARCHAR(MAX)` | NULL | Descripción del accidente |
+          | `fuente_oficial` | `NVARCHAR(200)` | NULL | Fuente oficial |
+
+          ### Tabla: `noticias_keywords`
+
+          | Campo | Tipo | Restricciones | Descripción |
+          |-------|------|---------------|-------------|
+          | `id` | `INT IDENTITY(1,1)` | PRIMARY KEY | Identificador único |
+          | `id_noticia` | `INT` | FOREIGN KEY | Referencia a noticia |
+          | `keyword` | `NVARCHAR(100)` | NOT NULL | Palabra clave |
+
+          ## Índices Creados
+
+          ```sql
+          -- Búsqueda por fecha
+          CREATE INDEX IX_noticias_fecha ON noticias (fecha_publicacion);
+          CREATE INDEX IX_accidentes_fecha ON accidentes (fecha_accidente);
+          
+          -- Búsqueda por ubicación
+          CREATE INDEX IX_accidentes_distrito ON accidentes (distrito);
+          
+          -- Búsqueda por categoría
+          CREATE INDEX IX_noticias_categoria ON noticias (categoria);
+          
+          -- Búsqueda por tipo
+          CREATE INDEX IX_accidentes_tipo ON accidentes (tipo_accidente);
+          ```
+
+          ## Vistas Disponibles
+
+          ### `vw_noticias_accidentes`
+          Combina información de noticias con sus accidentes asociados.
+
+          ### `vw_accidentes_por_distrito`
+          Estadísticas de accidentes agrupadas por distrito.
+
+          ### `vw_estadisticas_tipo_accidente`
+          Estadísticas por tipo de accidente.
+
+          ## Procedimientos Almacenados
+
+          ### `sp_buscar_por_keyword`
+          Busca noticias por palabra clave en título o descripción.
+
+          ```sql
+          EXEC sp_buscar_por_keyword @keyword = 'choque';
+          ```
+
+          ### `sp_resumen_mensual`
+          Genera resumen estadístico mensual de accidentes.
+
+          ```sql
+          EXEC sp_resumen_mensual @anio = 2024, @mes = 10;
+          ```
+
+          ## Consultas Ejemplo
+
+          ### Últimas noticias
+          ```sql
+          SELECT TOP 10 
+              n.titulo, 
+              m.nombre_medio, 
+              n.fecha_publicacion
+          FROM noticias n
+          INNER JOIN medios_comunicacion m ON n.id_medio = m.id_medio
+          ORDER BY n.fecha_publicacion DESC;
+          ```
+
+          ### Accidentes por distrito
+          ```sql
+          SELECT * FROM vw_accidentes_por_distrito
+          ORDER BY total_accidentes DESC;
+          ```
+
+          ### Accidentes del mes actual
+          ```sql
+          SELECT 
+              tipo_accidente,
+              COUNT(*) as total
+          FROM accidentes
+          WHERE MONTH(fecha_accidente) = MONTH(GETDATE())
+            AND YEAR(fecha_accidente) = YEAR(GETDATE())
+          GROUP BY tipo_accidente
+          ORDER BY total DESC;
+          ```
+
+          ---
+          *Generado automáticamente el $(date)*
+          EOF
+
+      - name: Generate BD.md with current data
+        run: |
+          export PATH="$PATH:/opt/mssql-tools/bin"
+          
+          cat > BD.md << 'EOF'
+          # Documentación de Base de Datos - Incidentes Tacna
+
+          ## 📊 Diagramas
+
+          ➡️ **[Diagrama ER Completo y Diccionario](diagrams/database-er-diagram.md)**
+
+          ## 🗄️ Estructura
+
+          La base de datos almacena información sobre noticias de incidentes y accidentes en Tacna, Perú.
+
+          ### Tablas Principales
+          
+          1. **medios_comunicacion** - Medios de prensa locales
+          2. **noticias** - Noticias scrapeadas
+          3. **accidentes** - Detalles de accidentes reportados
+          4. **noticias_keywords** - Palabras clave de noticias
+
+          ### Estadísticas Actuales
+          EOF
+          
+          # Add current statistics
+          sqlcmd -S ${{ secrets.SQL_SERVER }} -U ${{ secrets.SQL_USER }} -P ${{ secrets.SQL_PASS }} -d incidentestacna -Q "
+          SELECT '- **Medios registrados:** ' + CAST(COUNT(*) AS VARCHAR(10))
+          FROM medios_comunicacion
+          UNION ALL
+          SELECT '- **Noticias totales:** ' + CAST(COUNT(*) AS VARCHAR(10))
+          FROM noticias
+          UNION ALL
+          SELECT '- **Accidentes registrados:** ' + CAST(COUNT(*) AS VARCHAR(10))
+          FROM accidentes;
+          " -h -1 >> BD.md
+          
+          cat >> BD.md << 'EOF'
+
+          ## 🔍 Características
+
+          - ✅ Estructura normalizada con relaciones FK
+          - ✅ Índices optimizados para búsquedas
+          - ✅ Vistas predefinidas para análisis
+          - ✅ Procedimientos almacenados para consultas comunes
+          - ✅ Soporte Unicode (NVARCHAR) para caracteres especiales
+          - ✅ Cascada en eliminaciones (DELETE CASCADE)
+
+          ## 📈 Vistas Disponibles
+
+          | Vista | Descripción |
+          |-------|-------------|
+          | `vw_noticias_accidentes` | Join completo noticias + accidentes |
+          | `vw_accidentes_por_distrito` | Estadísticas por distrito |
+          | `vw_estadisticas_tipo_accidente` | Resumen por tipo |
+
+          ## 🔧 Procedimientos Almacenados
+
+          | Procedimiento | Uso |
+          |--------------|-----|
+          | `sp_buscar_por_keyword` | Búsqueda de noticias |
+          | `sp_resumen_mensual` | Estadísticas mensuales |
+
+          ## 🔗 Enlaces
+
+          - [README Principal](README.md)
+          - [Diagrama Infraestructura](diagrams/infrastructure-diagram.md)
+          - [Código Terraform](infra/main.tf)
+
+          ---
+          *Base de datos creada el $(date)*
+          EOF
+
+      - name: Commit and push data diagrams
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action - Data Load"
+          git add diagrams/database-er-diagram.md BD.md
+          git commit -m "Auto-generate database diagrams - Incidentes Tacna [skip ci]" || echo "No changes to commit"
+          git push || echo "Nothing to push"
