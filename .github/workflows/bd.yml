@@ -1,0 +1,237 @@
+name: Construcción infrastructura en Azure
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'infra/**'
+      - '.github/workflows/bd.yml'
+    paths-ignore:
+      - '.github/workflows/data-load.yml'
+      - 'Employment_Unemployment_GDP_data.csv'
+      - 'bd.sql'
+      - 'README.md'
+      - 'BD.md'
+      - 'diagrams/'
+  workflow_dispatch:
+
+jobs:
+  Deploy-infra:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Login Azure
+        run: | 
+          az login -u ${{ secrets.AZURE_USERNAME }} -p ${{ secrets.AZURE_PASSWORD }}
+      
+      - name: Create terraform.tfvars
+        run: |
+          cd infra
+          echo "suscription_id=\"${{ secrets.SUSCRIPTION_ID }}\"" > terraform.tfvars
+          echo "sqladmin_username=\"${{ secrets.SQL_USER }}\"" >> terraform.tfvars
+          echo "sqladmin_password=\"${{ secrets.SQL_PASS }}\"" >> terraform.tfvars
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+      
+      - name: Terraform Init
+        id: init
+        run: cd infra && terraform init 
+      
+      - name: Terraform Validate
+        id: validate
+        run: cd infra && terraform validate -no-color
+      
+      - name: Terraform Plan
+        run: cd infra && terraform plan -var="suscription_id=${{ secrets.SUSCRIPTION_ID }}" -var="sqladmin_username=${{ secrets.SQL_USER }}" -var="sqladmin_password=${{ secrets.SQL_PASS }}" -no-color -out main.tfplan
+
+      - name: Create String Output
+        id: tf-plan-string
+        run: |
+            TERRAFORM_PLAN=$(cd infra && terraform show -no-color main.tfplan)
+            delimiter="$(openssl rand -hex 8)"
+            echo "summary<<${delimiter}" >> $GITHUB_OUTPUT
+            echo "## Terraform Plan Output" >> $GITHUB_OUTPUT
+            echo "<details><summary>Click to expand</summary>" >> $GITHUB_OUTPUT
+            echo "" >> $GITHUB_OUTPUT
+            echo '```terraform' >> $GITHUB_OUTPUT
+            echo "$TERRAFORM_PLAN" >> $GITHUB_OUTPUT
+            echo '```' >> $GITHUB_OUTPUT
+            echo "</details>" >> $GITHUB_OUTPUT
+            echo "${delimiter}" >> $GITHUB_OUTPUT
+      
+      - name: Publish Terraform Plan to Task Summary
+        env:
+          SUMMARY: ${{ steps.tf-plan-string.outputs.summary }}
+        run: |
+          echo "$SUMMARY" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Outputs
+        id: vars
+        run: |
+            echo "terramaid_version=$(curl -s https://api.github.com/repos/RoseSecurity/Terramaid/releases/latest | grep tag_name | cut -d '"' -f 4)" >> $GITHUB_OUTPUT
+            case "${{ runner.arch }}" in
+            "X64" )
+                echo "arch=x86_64" >> $GITHUB_OUTPUT
+                ;;
+            "ARM64" )
+                echo "arch=arm64" >> $GITHUB_OUTPUT
+                ;;
+            esac
+      
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+
+      - name: Setup Terramaid
+        run: |
+            curl -L -o /tmp/terramaid.tar.gz "https://github.com/RoseSecurity/Terramaid/releases/download/${{ steps.vars.outputs.terramaid_version }}/Terramaid_Linux_${{ steps.vars.outputs.arch }}.tar.gz"
+            tar -xzvf /tmp/terramaid.tar.gz -C /tmp
+            mv -v /tmp/Terramaid /usr/local/bin/terramaid
+            chmod +x /usr/local/bin/terramaid
+      
+      - name: Terramaid
+        id: terramaid
+        run: |
+            cd infra
+            /usr/local/bin/terramaid run
+      
+      - name: Publish graph in step comment
+        run: |
+            echo "## Terramaid Graph" >> $GITHUB_STEP_SUMMARY
+            cat infra/Terramaid.md >> $GITHUB_STEP_SUMMARY 
+      
+      - name: Setup Graphviz
+        uses: ts-graphviz/setup-graphviz@v2        
+
+      - name: Setup inframap
+        run: |
+            curl -L -o /tmp/inframap.tar.gz "https://github.com/cycloidio/inframap/releases/download/v0.7.0/inframap-linux-amd64.tar.gz"
+            tar -xzvf /tmp/inframap.tar.gz -C /tmp
+            mv -v /tmp/inframap-linux-amd64 /usr/local/bin/inframap
+            chmod +x /usr/local/bin/inframap
+      
+      - name: inframap
+        run: |
+            cd infra
+            /usr/local/bin/inframap generate main.tf --raw | dot -Tsvg > inframap_azure.svg
+      
+      - name: Upload inframap
+        id: inframap-upload-step
+        uses: actions/upload-artifact@v4
+        with:
+          name: inframap_azure.svg
+          path: infra/inframap_azure.svg
+
+      - name: Terraform Apply
+        run: |
+            cd infra
+            terraform apply -var="suscription_id=${{ secrets.SUSCRIPTION_ID }}" -var="sqladmin_username=${{ secrets.SQL_USER }}" -var="sqladmin_password=${{ secrets.SQL_PASS }}" -auto-approve main.tfplan
+
+      - name: Generate Infrastructure Diagram
+        run: |
+          mkdir -p diagrams
+          
+          cat > diagrams/infrastructure-diagram.md << 'EOF'
+          # Diagrama de Infraestructura Azure
+
+          Este diagrama muestra la arquitectura de la infraestructura desplegada en Azure usando Terraform.
+
+          ## Diagrama Terramaid
+          EOF
+          
+          # Add Terramaid output if it exists
+          if [ -f "infra/Terramaid.md" ]; then
+              cat infra/Terramaid.md >> diagrams/infrastructure-diagram.md
+              echo "" >> diagrams/infrastructure-diagram.md
+          fi
+          
+          cat >> diagrams/infrastructure-diagram.md << 'EOF'
+
+          ## Diagrama de Arquitectura
+
+          ```mermaid
+          graph TB
+              subgraph "Azure Subscription"
+                  subgraph "Resource Group: upt-incidentes-tacna"
+                      subgraph "Brazil South Region"
+                          SQL[("Azure SQL Server<br/>upt-incidentes-tacna<br/>🆓 Serverless Gen5")]
+                          DB[("SQL Database<br/>incidentestacna<br/>32GB Free Tier")]
+                          FW["Firewall Rule<br/>PublicAccess"]
+                          
+                          SQL --> DB
+                          SQL --> FW
+                      end
+                  end
+              end
+              
+              subgraph "GitHub Actions"
+                  WF["Infrastructure<br/>Workflow"]
+                  DATA["Data Loading<br/>Workflow (Separado)"]
+              end
+              
+              WF --> FW
+              DATA -.-> FW
+              FW --> SQL
+              
+              style SQL fill:#e1f5fe
+              style DB fill:#f3e5f5
+              style FW fill:#fff3e0
+              style WF fill:#e8f5e8
+              style DATA fill:#fff9c4,stroke-dasharray: 5 5
+          ```
+
+          ## Componentes Desplegados
+
+          ### Resource Group: `upt-incidentes-tacna`
+          - **Región:** Brazil South
+          - **Propósito:** Contenedor de recursos para sistema de incidentes Tacna
+
+          ### SQL Server: `upt-incidentes-tacna`
+          - **Tipo:** Azure SQL Server
+          - **Versión:** 12.0
+          - **Autenticación:** SQL Server Authentication
+          - **Firewall:** Acceso público (0.0.0.0-255.255.255.255)
+
+          ### Database: `incidentestacna`
+          - **SKU:** GP_S_Gen5_2 (🆓 **Tier Gratuito Serverless**)
+          - **vCores:** 0.5 - 2 (escalado automático)
+          - **Almacenamiento:** 32GB incluidos gratis
+          - **Auto-pause:** Después de 60 minutos sin uso
+          - **Propósito:** Almacenar noticias de incidentes y accidentes en Tacna
+
+          ## 💰 Costos (Tier Gratuito)
+
+          - **100,000 vCore segundos/mes gratis** (~35 horas de uso continuo)
+          - **32GB de datos incluidos**
+          - **32GB de backup storage incluidos**
+          - **Costo adicional:** $0 dentro de los límites gratuitos
+
+          ## Estado de la Infraestructura
+
+          ✅ **Infraestructura desplegada exitosamente con tier GRATUITO**
+
+          ### Próximos Pasos
+          1. ⏳ Ejecutar workflow de carga de datos por separado
+          2. 🔍 Consultar datos una vez cargados
+          3. ✅ Scripts SQL ya compatibles con T-SQL (SQL Server)
+
+          ### Configuración SQL Server
+          - **Motor de BD:** SQL Server (T-SQL)
+          - **Puerto:** 1433
+          - **Connection string:** Formato SQL Server
+          - **Collation:** SQL_Latin1_General_CP1_CI_AS (compatible con español)
+
+          ---
+          *Generado automáticamente el $(date)*
+          EOF
+
+      - name: Commit and push infrastructure diagram
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action - Infrastructure"
+          git add diagrams/infrastructure-diagram.md
+          git commit -m "Auto-generate infrastructure diagram [skip ci]" || echo "No changes to commit"
+          git push || echo "Nothing to push"

@@ -1,0 +1,40 @@
+name: ETL diario
+
+on:
+  schedule:
+    - cron: "0 * * * *"   # cada hora en minuto 0 (UTC)
+  workflow_dispatch:
+
+jobs:
+  run-etl:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Configurar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Instalar dependencias del sistema (pyodbc)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unixodbc-dev gcc
+
+      - name: Instalar dependencias Python
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Descargar modelo spaCy (es_core_news_sm)
+        run: |
+          python -m spacy download es_core_news_sm
+
+      - name: Ejecutar ETL
+        env:
+          AZURE_SQL_SERVER: incidentes.database.windows.net
+          AZURE_SQL_DATABASE: incidentes
+          AZURE_SQL_USER: Luzkalid
+          AZURE_SQL_PASSWORD: Tacna123
+        run: python -m etl.main
