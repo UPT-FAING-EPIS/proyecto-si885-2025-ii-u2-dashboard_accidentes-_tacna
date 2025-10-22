@@ -9,7 +9,6 @@ jobs:
   etl:
     runs-on: ubuntu-latest
 
-
     steps:
       - name: Clonar repo
         uses: actions/checkout@v4
@@ -37,5 +36,3 @@ jobs:
           SQL_SERVER: ${{ secrets.SQL_SERVER }}
           SQL_USER: ${{ secrets.SQL_USER }}
           SQL_PASS: ${{ secrets.SQL_PASS }}
-
-# help
