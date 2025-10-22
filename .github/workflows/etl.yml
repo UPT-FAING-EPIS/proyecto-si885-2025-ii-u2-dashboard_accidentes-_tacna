@@ -39,3 +39,5 @@ jobs:
           AZURE_SQL_USER: ${{ secrets.SQL_USER }}
           AZURE_SQL_PASSWORD: ${{ secrets.SQL_PASS }}
         run: python -m etl.main
+
+# help
