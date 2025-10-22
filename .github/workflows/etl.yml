@@ -1,11 +1,9 @@
 name: ETL Noticias Tacna
 
-# TEMPORARILY DISABLED - ETL files are not in repository (ignored by .gitignore)
-# Will be re-enabled after recreating ETL with new database structure
-# on:
-#   schedule:
-#     - cron: "*/5 * * * *"  # cada 5 minutos
-#   workflow_dispatch:
+on:
+  schedule:
+    - cron: "*/5 * * * *"  # cada 5 minutos
+  workflow_dispatch:
 
 jobs:
   etl:
