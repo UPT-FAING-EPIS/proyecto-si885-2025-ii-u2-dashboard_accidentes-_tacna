@@ -34,3 +34,4 @@ Este proyecto presenta un **dashboard interactivo de accidentes en Tacna**, cons
 ## Instalación
 ```bash
 git clone https://github.com/tuusuario/proyecto-formatos-01.git
+# Test trigger for workflow execution
