@@ -1,0 +1,23 @@
+{
+  "radio_uno": {
+    "nombre": "Radio Uno Tacna",
+    "tipo": "radio",
+    "region": "Tacna",
+    "url_principal": "https://radiouno.pe/",
+    "secciones": {
+      "policial": "https://radiouno.pe/noticias/policiales/",
+      "actualidad": "https://radiouno.pe/noticias/actualidad/",
+      "regional": "https://radiouno.pe/noticias/region/"
+    }
+  },
+  "tacna_noticias": {
+    "nombre": "Tacna Noticias",
+    "tipo": "digital",
+    "region": "Tacna",
+    "url_principal": "https://tacnanoticias.pe/",
+    "secciones": {
+      "policial": "https://tacnanoticias.pe/policiales/",
+      "local": "https://tacnanoticias.pe/locales/"
+    }
+  }
+}
