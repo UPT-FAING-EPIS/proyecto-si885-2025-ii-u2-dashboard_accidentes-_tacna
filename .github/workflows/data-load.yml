@@ -47,14 +47,20 @@ jobs:
       - name: Verify database connectivity
         run: |
           export PATH="$PATH:/opt/mssql-tools/bin"
-          echo "Testing connection to SQL Server..."
-          sqlcmd -S "$SQL_SERVER" -U "$SQL_USER" -P "$SQL_PASS" -d incidentestacna -Q "SELECT GETDATE() as current_time, @@VERSION as version;"
+          echo "Testing connection to Azure SQL Database..."
+          echo "Server: ${SQL_SERVER}"
+          echo "User: ${SQL_USER}"
+          echo "Database: incidentestacna"
+          
+          # For Azure SQL Database, we need encryption and trust server certificate
+          echo "Attempting Azure SQL Database connection..."
+          sqlcmd -S "${SQL_SERVER}" -U "${SQL_USER}" -P "${SQL_PASS}" -d incidentestacna -N -C -l 30 -Q "SELECT GETDATE() as current_time, @@VERSION as version;"
 
       - name: Create database structure
         run: |
           export PATH="$PATH:/opt/mssql-tools/bin"
           echo "Creating database structure for Incidentes Tacna..."
-          sqlcmd -S "$SQL_SERVER" -U "$SQL_USER" -P "$SQL_PASS" -d incidentestacna -i bd.sql
+          sqlcmd -S "$SQL_SERVER" -U "$SQL_USER" -P "$SQL_PASS" -d incidentestacna -N -C -l 30 -i bd.sql
 
       - name: Verify tables creation
         run: |
