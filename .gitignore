@@ -1,5 +1,4 @@
-# Ignore the ETL code directory (data pipeline)
-etl/
+
 
 # Python common ignores
 __pycache__/
