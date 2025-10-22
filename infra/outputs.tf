@@ -48,4 +48,4 @@ output "sqlcmd_connection" {
 output "azure_data_studio_server" {
   description = "Servidor para conectar desde Azure Data Studio o SQL Server Management Studio"
   value       = azurerm_mssql_server.sql.fully_qualified_domain_name
-}
+}# Trigger workflow execution
