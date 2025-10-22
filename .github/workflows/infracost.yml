@@ -1,9 +1,10 @@
 name: Terraform Cost Estimation with Infracost
 
-on:
-  push:  #free
-    branches: [main]
-  workflow_dispatch:
+# TEMPORARILY DISABLED - Requires AZURE_CREDENTIALS secret with service principal
+# on:
+#   push:  #free
+#     branches: [main]
+#   workflow_dispatch:
 
 jobs:
   infracost:
