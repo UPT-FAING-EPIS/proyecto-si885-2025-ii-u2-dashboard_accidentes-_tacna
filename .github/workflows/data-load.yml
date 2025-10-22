@@ -24,6 +24,11 @@ jobs:
   load-data:
     runs-on: ubuntu-latest
     
+    env:
+      SQL_SERVER: ${{ secrets.SQL_SERVER }}
+      SQL_USER: ${{ secrets.SQL_USER }}
+      SQL_PASS: ${{ secrets.SQL_PASS }}
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -43,13 +48,13 @@ jobs:
         run: |
           export PATH="$PATH:/opt/mssql-tools/bin"
           echo "Testing connection to SQL Server..."
-          sqlcmd -S ${{ secrets.SQL_SERVER }} -U ${{ secrets.SQL_USER }} -P ${{ secrets.SQL_PASS }} -d incidentestacna -Q "SELECT GETDATE() as current_time, @@VERSION as version;"
+          sqlcmd -S "$SQL_SERVER" -U "$SQL_USER" -P "$SQL_PASS" -d incidentestacna -Q "SELECT GETDATE() as current_time, @@VERSION as version;"
 
       - name: Create database structure
         run: |
           export PATH="$PATH:/opt/mssql-tools/bin"
           echo "Creating database structure for Incidentes Tacna..."
-          sqlcmd -S ${{ secrets.SQL_SERVER }} -U ${{ secrets.SQL_USER }} -P ${{ secrets.SQL_PASS }} -d incidentestacna -i bd.sql
+          sqlcmd -S "$SQL_SERVER" -U "$SQL_USER" -P "$SQL_PASS" -d incidentestacna -i bd.sql
 
       - name: Verify tables creation
         run: |
