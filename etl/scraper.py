@@ -4,6 +4,8 @@ from datetime import date
 import json
 from urllib.parse import urljoin
 from utils.db import conectar_sql
+import time
+
 
 def obtener_noticias(url, categoria, fuente, configuracion=None):
     """Extrae título, enlace y fecha desde una sección de noticias.
@@ -18,13 +20,14 @@ def obtener_noticias(url, categoria, fuente, configuracion=None):
         }
 
     try:
-        headers = {'User-Agent': configuracion.get("user_agent", "")}
+        headers = {"User-Agent": configuracion.get("user_agent", "")}
         timeout = configuracion.get("timeout_segundos", 15)
 
         res = requests.get(url, timeout=timeout, headers=headers)
         res.raise_for_status()
         soup = BeautifulSoup(res.text, "html.parser")
 
+        # Selector genérico: article -> a. Puedes adaptar por fuente si hace falta.
         for art in soup.select("article"):
             titulo_tag = art.find("a")
             if not titulo_tag:
@@ -45,15 +48,16 @@ def obtener_noticias(url, categoria, fuente, configuracion=None):
                 "categoria": categoria,
                 "fecha_publicacion": fecha,
                 "fecha_extraccion": date.today(),
-                "ciudad": fuente["region"]
+                "ciudad": fuente.get("region", "Tacna")
             })
     except Exception as e:
         print(f"⚠️ Error al scrapear {url}: {e}")
     return noticias
 
+
 def guardar_medios(conn, fuente):
     """Inserta el medio si no existe en la tabla medios.
-    Primero comprueba con SELECT y luego hace INSERT si hace falta.
+    Comprueba con SELECT primero y luego INSERT si hace falta.
     """
     try:
         cursor = conn.cursor()
@@ -61,18 +65,20 @@ def guardar_medios(conn, fuente):
         if not cursor.fetchone():
             cursor.execute(
                 "INSERT INTO medios (nombre, tipo, region, url_principal) VALUES (?, ?, ?, ?)",
-                (fuente["nombre"], fuente["tipo"], fuente["region"], fuente["url_principal"])
+                (fuente["nombre"], fuente["tipo"], fuente.get("region", ""), fuente.get("url_principal", ""))
             )
             conn.commit()
     except Exception as e:
         print(f"❌ Error al insertar/actualizar medio '{fuente.get('nombre')}': {e}")
 
+
 def guardar_noticias(conn, noticias):
     """Inserta las noticias en la base de datos, evitando duplicados.
-    Comprueba existencia con SELECT y luego INSERT con 7 parámetros.
+    Comprueba existencia por URL (preferible) o por título (fallback) y muestra logs detallados.
     Devuelve cuántas filas nuevas fueron insertadas.
     """
     cursor = conn.cursor()
+
     try:
         cursor.execute("SELECT COUNT(*) FROM noticias")
         row = cursor.fetchone()
@@ -84,21 +90,39 @@ def guardar_noticias(conn, noticias):
     nuevas = 0
     for n in noticias:
         try:
-            # comprobar existencia primero
-            cursor.execute("SELECT 1 FROM noticias WHERE titulo = ? AND fuente = ?", (n["titulo"], n["fuente"]))
-            if not cursor.fetchone():
+            titulo_check = (n.get("titulo") or "").strip()
+            url_check = (n.get("url") or "").strip()
+
+            existe = False
+            indicador = None
+
+            if url_check:
+                cursor.execute("SELECT 1 FROM noticias WHERE url = ?", (url_check,))
+                existe = cursor.fetchone() is not None
+                indicador = "url"
+            else:
+                # Normalizar: recortar y comparar en minúsculas
+                cursor.execute("SELECT 1 FROM noticias WHERE LOWER(RTRIM(LTRIM(titulo))) = ?", (titulo_check.lower(),))
+                existe = cursor.fetchone() is not None
+                indicador = "titulo"
+
+            if existe:
+                print(f"⏭️ Saltada (ya existe por {indicador}): '{titulo_check[:100]}' - {url_check}")
+            else:
                 cursor.execute(
                     "INSERT INTO noticias (titulo, url, fuente, categoria, fecha_publicacion, fecha_extraccion, ciudad) "
                     "VALUES (?, ?, ?, ?, ?, ?, ?)",
                     (
-                        n["titulo"], n["url"], n["fuente"], n["categoria"],
-                        n["fecha_publicacion"], n["fecha_extraccion"], n["ciudad"]
+                        n.get("titulo"), n.get("url"), n.get("fuente"), n.get("categoria"),
+                        n.get("fecha_publicacion"), n.get("fecha_extraccion"), n.get("ciudad")
                     )
                 )
                 nuevas += 1
+                print(f"➕ Insertada: '{titulo_check[:100]}' - {url_check}")
         except Exception as e:
             errores += 1
-            print(f"❌ Error al insertar noticia '{n['titulo'][:80]}...': {e}")
+            print(f"❌ Error al insertar noticia '{(n.get('titulo') or '')[:80]}...': {e}")
+
     try:
         conn.commit()
     except Exception as e:
@@ -112,16 +136,18 @@ def guardar_noticias(conn, noticias):
         after = before
 
     insertadas_report = max(0, after - before)
-    # Si queremos ser estrictos, insertadas_report debería coincidir con 'nuevas',
-    # pero usar after-before da el conteo real en BD.
     print(f"✅ Intentadas: {len(noticias)}, nuevas insertadas en BD: {insertadas_report}, errores: {errores}")
     return insertadas_report
 
+
 def ejecutar_scraper():
+    """Carga fuentes desde JSON y guarda noticias en Azure SQL.
+    Retorna el número total de noticias nuevas insertadas en la BD.
+    """
     with open("etl/fuentes.json", "r", encoding="utf-8") as f:
         config = json.load(f)
 
-    fuentes = config["fuentes"]
+    fuentes = config.get("fuentes", {})
     configuracion = config.get("configuracion", {})
 
     conn = conectar_sql()
@@ -129,19 +155,18 @@ def ejecutar_scraper():
 
     for key, fuente in fuentes.items():
         if not fuente.get("activo", True):
-            print(f"⏭️ Saltando {fuente['nombre']} (desactivada)")
+            print(f"⏭️ Saltando {fuente.get('nombre')} (desactivada)")
             continue
 
-        print(f"📰 Extrayendo noticias de {fuente['nombre']}...")
+        print(f"📰 Extrayendo noticias de {fuente.get('nombre')}...")
         guardar_medios(conn, fuente)
 
-        for categoria, url in fuente["secciones"].items():
+        for categoria, url in fuente.get("secciones", {}).items():
             noticias = obtener_noticias(url, categoria, fuente, configuracion)
             nuevas = guardar_noticias(conn, noticias)
             total_nuevas += nuevas
             print(f"✅ {len(noticias)} noticias extraídas de {categoria}, {nuevas} nuevas insertadas en BD")
 
-            import time
             delay = configuracion.get("delay_entre_requests", 0)
             if delay > 0:
                 time.sleep(delay)
@@ -157,6 +182,7 @@ def ejecutar_scraper():
 
     conn.close()
     return total_nuevas
+
 
 if __name__ == "__main__":
     ejecutar_scraper()
