@@ -2,7 +2,7 @@ name: ETL Noticias Tacna
 
 on:
   schedule:
-    - cron: "0 * * * *"  # cada hora (minuto 0 de cada hora)
+    - cron: "0 0 */2 * *"  # cada 2 días a medianoche (UTC)
   workflow_dispatch:
 
 jobs:
