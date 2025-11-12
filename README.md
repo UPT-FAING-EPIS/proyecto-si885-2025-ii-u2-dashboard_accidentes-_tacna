@@ -5,30 +5,37 @@
 
 ## Descripción del Proyecto
 
-El Dashboard de Accidentes de Tránsito en Tacna es una plataforma web interactiva desarrollada para el monitoreo y análisis de siniestros viales en la ciudad de Tacna.
-El sistema recopila información de fuentes noticiosas digitales locales mediante técnicas de web scraping, procesando y visualizando los datos en gráficos dinámicos y mapas interactivos que facilitan la interpretación y la toma de decisiones.
+El Dashboard de Accidentes de Tránsito en Tacna es una plataforma web interactiva diseñada para el análisis y visualización de datos sobre siniestros viales en la ciudad de Tacna.
+La información presentada en el dashboard se obtiene mediante técnicas de web scraping aplicadas a fuentes noticiosas locales, como sitios web y canales de Telegram, que publican reportes sobre accidentes de tránsito.
 
-Este proyecto busca centralizar la información dispersa sobre accidentes de tránsito y brindar una herramienta útil para autoridades, investigadores y ciudadanos interesados en mejorar la seguridad vial y reducir los índices de siniestralidad en la región.
+Los datos recopilados se procesan y estructuran para ser visualizados mediante gráficos dinámicos y mapas interactivos, lo que permite identificar patrones, causas, tipos de accidentes y zonas con mayor incidencia.
+
+El dashboard incluye diversas visualizaciones:
+🗺️ Mapa de calor que muestra los distritos con mayor frecuencia de accidentes.
+📊 Gráficos de barras verticales y horizontales que presentan el tipo y la causa de los accidentes.
+🍩 Gráfico de dona (donut) que representa los tipos de vehículos involucrados.
+📈 Gráficos de recuento y comparativos que muestran la relación entre tipo de accidente e identificador, así como la procedencia de las noticias.
+📰 Visualizaciones de fuentes que muestran desde qué sitios web o canales fueron scrapeadas las noticias, junto con representaciones alternativas para una mejor interpretación visual.
+
+El proyecto tiene como finalidad centralizar información dispersa y brindar una herramienta de análisis para autoridades, investigadores y ciudadanos, que contribuya a mejorar la seguridad vial y a reducir los índices de siniestralidad en la región.
 
 ## Objetivo General
 
-Desarrollar un dashboard interactivo para la visualización y análisis de accidentes de tránsito en Tacna, consolidando la información obtenida de medios noticiosos locales y presentándola mediante gráficos y mapas dinámicos.
+Desarrollar un dashboard interactivo que consolide, visualice y analice información sobre accidentes de tránsito en la ciudad de Tacna, utilizando datos obtenidos mediante web scraping de fuentes digitales locales (sitios web y canales de Telegram), con el fin de identificar patrones, causas y zonas de mayor incidencia.
 
 ## Objetivos Específicos
 
-Recopilar y organizar datos sobre accidentes de tránsito a partir de fuentes digitales locales mediante web scraping en Python.
-
-Visualizar la distribución geográfica de los accidentes en un mapa interactivo.
-
-Mostrar estadísticas comparativas por distrito o zona mediante gráficos.
-
-Analizar las fuentes de información (noticias por medio de comunicación).
+Recolectar y procesar noticias relacionadas con accidentes de tránsito en Tacna, extraídas de medios digitales locales mediante técnicas de web scraping en Python.
+Organizar y depurar los datos recopilados para su posterior análisis y visualización en el dashboard.
+Diseñar y desarrollar visualizaciones interactivas —como mapas de calor, gráficos de barras, donut y gráficos comparativos— que muestren la distribución geográfica, tipo, causa y frecuencia de los accidentes.
+Analizar la cobertura informativa y la procedencia de las noticias, identificando patrones en las fuentes utilizadas (por ejemplo, diferencias entre sitios web y canales de Telegram).
+Integrar y presentar los resultados en un dashboard accesible y dinámico que facilite la interpretación de tendencias y apoye la toma de decisiones relacionadas con la seguridad vial en Tacna.
 
 ## Tecnologías Utilizadas
 
-Lenguaje: Python
+Lenguaje de programación: Python
 Visualización: Power BI
-Hosting / Nube: Azure 
+Almacenamiento y hosting: Azure
 Control de versiones: GitHub
 
 ## RoadMap
